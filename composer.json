@@ -1,5 +1,5 @@
 {
-    "name": "rossriley/bolt-csv-export",
+    "name": "benjamintappnad/bolt-csv-export",
     "description": "Export Bolt Content-types as CSV",
     "type": "bolt-extension",
     "keywords": [
