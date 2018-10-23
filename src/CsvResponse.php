@@ -16,6 +16,7 @@ class CsvResponse extends Response
      * CsvResponse constructor.
      * @param array $data
      * @param $filename
+     * @param string $separator
      * @param int $status
      * @param array $headers
      */
