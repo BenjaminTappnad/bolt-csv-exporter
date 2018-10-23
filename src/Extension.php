@@ -101,7 +101,7 @@ class Extension extends SimpleExtension
 
         $filename = isset($config['file_names'][$ct]) ? $config['file_names'][$ct]: $ct;
 
-        return new CsvResponse($csvData, $filename);
+        return new CsvResponse($csvData, $filename, isset($config['separator']) ? $config['separator'] : ',');
     }
 
     /**
