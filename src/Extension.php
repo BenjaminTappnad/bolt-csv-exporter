@@ -101,7 +101,7 @@ class Extension extends SimpleExtension
 
         $filename = isset($config['file_names'][$ct]) ? $config['file_names'][$ct]: $ct;
 
-        return new CsvResponse($csvData, $filename, isset($config['separator']) ? $config['separator'] : ',');
+        return new CsvResponse($csvData, $filename);
     }
 
     /**
@@ -111,16 +111,17 @@ class Extension extends SimpleExtension
      */
     public function serializeField($field)
     {
+        $separator = isset($config['separator']) ? $config['separator'] : ',';
         $output = '';
         if (is_array($field)) {
             foreach ($field as $item) {
-                $output .= $this->serializeField($item) . ',';
+                $output .= $this->serializeField($item) . $separator;
             }
         } else {
-            $output .= $field . ',';
+            $output .= $field . $separator;
         }
 
-        return rtrim($output, ',');
+        return rtrim($output, $separator);
     }
 
     protected function processRecord($contentType, $record)
