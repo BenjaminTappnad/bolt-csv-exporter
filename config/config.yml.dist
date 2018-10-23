@@ -2,6 +2,9 @@
 ## Bolt Csv Export configuration options
 ##
 
+## CSV separator (usefull for french country for which the separator must be semicolon because decimal numbers are separater by a coma)
+separator: ","
+
 ## List of contenttype that are excluded from export
 disabled:
     - showcases
