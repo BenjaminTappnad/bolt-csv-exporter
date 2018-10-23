@@ -10,7 +10,7 @@ class CsvResponse extends Response
 
     protected $filename;
     
-    protected $separator;
+    protected $separator = ',';
 
     /**
      * CsvResponse constructor.
@@ -20,13 +20,13 @@ class CsvResponse extends Response
      * @param int $status
      * @param array $headers
      */
-    public function __construct(array $data = [], $filename, $separator = ',', $status = 200, array $headers = [])
+    public function __construct($filename, array $data = [], $separator = ',', $status = 200, array $headers = [])
     {
         parent::__construct('', $status, $headers);
 
         $this->filename = $filename . '.csv';
-        $this->setData($data);
         $this->separator = $separator;
+        $this->setData($data);
     }
 
     public function setData(array $data)
