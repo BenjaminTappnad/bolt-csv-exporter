@@ -9,6 +9,8 @@ class CsvResponse extends Response
     protected $data;
 
     protected $filename;
+    
+    protected $separator;
 
     /**
      * CsvResponse constructor.
@@ -17,12 +19,13 @@ class CsvResponse extends Response
      * @param int $status
      * @param array $headers
      */
-    public function __construct(array $data = [], $filename, $status = 200, array $headers = [])
+    public function __construct(array $data = [], $filename, $separator = ',', $status = 200, array $headers = [])
     {
         parent::__construct('', $status, $headers);
 
         $this->filename = $filename . '.csv';
         $this->setData($data);
+        $this->separator = $separator;
     }
 
     public function setData(array $data)
@@ -31,7 +34,7 @@ class CsvResponse extends Response
         fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
 
         foreach ($data as $row) {
-            fputcsv($output, $row);
+            fputcsv($output, $row, $this->separator);
         }
 
         rewind($output);
