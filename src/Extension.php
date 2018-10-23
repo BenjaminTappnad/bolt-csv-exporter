@@ -100,8 +100,9 @@ class Extension extends SimpleExtension
         }
 
         $filename = isset($config['file_names'][$ct]) ? $config['file_names'][$ct]: $ct;
+        $separator = isset($config['separator']) ? $config['separator'] : ',';
 
-        return new CsvResponse($csvData, $filename);
+        return new CsvResponse($csvData, $filename, $separator);
     }
 
     /**
@@ -111,17 +112,16 @@ class Extension extends SimpleExtension
      */
     public function serializeField($field)
     {
-        $separator = isset($config['separator']) ? $config['separator'] : ',';
         $output = '';
         if (is_array($field)) {
             foreach ($field as $item) {
-                $output .= $this->serializeField($item) . $separator;
+                $output .= $this->serializeField($item) . ',';
             }
         } else {
-            $output .= $field . $separator;
+            $output .= $field . ',';
         }
 
-        return rtrim($output, $separator);
+        return rtrim($output, ',');
     }
 
     protected function processRecord($contentType, $record)
