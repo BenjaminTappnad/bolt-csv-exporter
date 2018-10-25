@@ -17,6 +17,11 @@ disabled:
 #     pages:
 #        title: Page Title
 #        slug: false
+#        boolean_field:
+#           title: My boolean field title
+#           values:
+#               "false": No
+#               "true": Yes
 
 ## Define file names for each contenttype export
 ## Any contenttype not set will just use the contenttype name
