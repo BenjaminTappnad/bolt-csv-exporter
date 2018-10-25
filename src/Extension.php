@@ -85,6 +85,16 @@ class Extension extends SimpleExtension
                 }
 
                 $outputVal = $this->serializeField($field);
+                
+                if (is_array($outputKey)) {
+                    # Check for formatted values
+                    if (array_key_exists('values', $outputKey) && array_key_exists($outputVal, $outputKey['values'])) {
+                        $outputVal = $outputKey['values'][$outputVal];
+                    }
+                    # Then check for field title
+                    $outputKey = isset($outputKey['title']) ? $outputKey['title'] : $fieldName;
+                }
+                
                 $compiled[$outputKey] = $outputVal;
             }
             $outputData[] = $compiled;
