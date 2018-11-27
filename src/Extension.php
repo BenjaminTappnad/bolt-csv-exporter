@@ -29,20 +29,19 @@ class Extension extends SimpleExtension
 
     protected function registerMenuEntries()
     {
-        $config = $this->getConfig();
-        $prefix = $this->getContainer()['controller.backend.mount_prefix'];
-        $permission = $config['permission'] ? $config['permission']: 'contenttype-action';
+        $config     = $this->getConfig();
+        $prefix     = $this->getContainer()['controller.backend.mount_prefix'];
+        $permission = $config['permission'] ? $config['permission'] : 'contenttype-action';
 
         $parent = (new MenuEntry('export'))
             ->setLabel(Trans::__('CSV Export'))
             ->setIcon('fa:file')
             ->setPermission($permission)
-            ->setGroup(true)
-        ;
+            ->setGroup(true);
 
         foreach ($this->getAvailableExports() as $key => $export) {
             $parent->add(
-                (new MenuEntry('export '. $key, $prefix . '/export/'.$key))
+                (new MenuEntry('export ' . $key, $prefix . '/export/' . $key))
                     ->setLabel('Export ' . $export['name'])
                     ->setIcon('fa:file')
             );
@@ -61,9 +60,9 @@ class Extension extends SimpleExtension
 
     public function doExport(Request $request)
     {
-        $app = $this->getContainer();
+        $app    = $this->getContainer();
         $config = $this->getConfig();
-        $ct = $request->get('contenttype');
+        $ct     = $request->get('contenttype');
 
         // We shouldn't be able to get here with an invalid CT but if we do, just use an empty array
         if (!$this->canExport($ct)) {
@@ -76,40 +75,56 @@ class Extension extends SimpleExtension
         $outputData = [];
         foreach ($allRecords as $record) {
             $compiled = [];
-            $record = $this->processRecord($ct, $record);
+            $record   = $this->processRecord($ct, $record);
             foreach ($record as $fieldName => $field) {
-                $outputKey = isset($config['mappings'][$ct][$fieldName]) ? $config['mappings'][$ct][$fieldName]: $fieldName;
+                $outputKey = isset($config['mappings'][$ct][$fieldName]) ? $config['mappings'][$ct][$fieldName] : $fieldName;
 
                 if ($outputKey === false) {
                     continue;
                 }
 
                 $outputVal = $this->serializeField($field);
-                
+
                 if (is_array($outputKey)) {
                     # Check for formatted values
-                    if (array_key_exists('values', $outputKey) && array_key_exists($outputVal, $outputKey['values'])) {
-                        $outputVal = $outputKey['values'][$outputVal];
+                    if (array_key_exists('values', $outputKey)) {
+                        # Check if the answer is a json (multiple choice, for select field in content type)
+                        $decodedOutput = json_decode($outputVal, true);
+                        if (is_array($decodedOutput)) {
+                            $multiple = [];
+                            foreach ($decodedOutput as $decoded) {
+                                if (array_key_exists($decoded, $outputKey['values'])) {
+                                    $multiple[] = $outputKey['values'][$decoded];
+                                }
+                            }
+                            if (!empty($multiple)) {
+                                $outputVal = implode("\n", $multiple);
+                            }
+                        } elseif (array_key_exists($outputVal, $outputKey['values'])) {
+                            $outputVal = $outputKey['values'][$outputVal];
+                        }
+
                     }
                     # Then check for field title
                     $outputKey = isset($outputKey['title']) ? $outputKey['title'] : $fieldName;
                 }
-                
+
                 $compiled[$outputKey] = $outputVal;
             }
             $outputData[] = $compiled;
         }
+
         if (count($outputData)) {
             $headers = array_keys($outputData[0]);
         }
 
-        $csvData = [];
+        $csvData   = [];
         $csvData[] = $headers;
-        foreach ($outputData as $csvRow){
+        foreach ($outputData as $csvRow) {
             $csvData[] = array_values($csvRow);
         }
 
-        $filename = isset($config['file_names'][$ct]) ? $config['file_names'][$ct]: $ct;
+        $filename  = isset($config['file_names'][$ct]) ? $config['file_names'][$ct] : $ct;
         $separator = isset($config['separator']) ? $config['separator'] : ',';
 
         return new CsvResponse($filename, $csvData, $separator);
@@ -117,7 +132,9 @@ class Extension extends SimpleExtension
 
     /**
      * Method that can be called recursively to handle flattening field values
+     *
      * @param $field
+     *
      * @return string
      */
     public function serializeField($field)
@@ -136,16 +153,16 @@ class Extension extends SimpleExtension
 
     protected function processRecord($contentType, $record)
     {
-        $app = $this->getContainer();
-        $repo = $app['storage']->getRepository($contentType);
+        $app      = $this->getContainer();
+        $repo     = $app['storage']->getRepository($contentType);
         $metadata = $repo->getClassMetadata();
-        $values = [];
+        $values   = [];
 
         foreach ($metadata->getFieldMappings() as $field) {
             $fieldName = $field['fieldname'];
-            $val = $record->$fieldName;
+            $val       = $record->$fieldName;
             if (in_array($field['type'], ['date', 'datetime'])) {
-                $val = (string) $record->$fieldName;
+                $val = (string)$record->$fieldName;
             }
             if (is_callable([$val, 'serialize'])) {
                 /** @var Entity $val */
@@ -162,11 +179,11 @@ class Extension extends SimpleExtension
      */
     protected function getAvailableExports()
     {
-        $app = $this->getContainer();
-        $config = $this->getConfig();
+        $app          = $this->getContainer();
+        $config       = $this->getConfig();
         $contentTypes = Bag::from($app['config']->get('contenttypes'));
 
-        $exports = $contentTypes->filter(function($key, $item) use ($config) {
+        $exports = $contentTypes->filter(function ($key, $item) use ($config) {
             if (!is_array($config['disabled'])) {
                 return true;
             }
