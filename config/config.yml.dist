@@ -22,6 +22,12 @@ disabled:
 #           values:
 #               "false": No
 #               "true": Yes
+#       select_field:
+#           title: My select field title
+#           values:
+#               "yes": "Yes I want"
+#               "no": "No I don't want
+#               "dont-know": "I don't know"
 
 ## Define file names for each contenttype export
 ## Any contenttype not set will just use the contenttype name
