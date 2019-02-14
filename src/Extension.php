@@ -3,19 +3,16 @@
 namespace Bolt\Extension\CsvExport;
 
 use Bolt\Collection\Bag;
-use Bolt\Collection\MutableBag;
-use Bolt\EventListener\RedirectListener;
-use Bolt\Exception\InvalidRepositoryException;
+use Bolt\Events\CronEvent;
 use Bolt\Extension\SimpleExtension;
 use Bolt\Menu\MenuEntry;
-use Bolt\Storage\Migration\Export;
+use Bolt\Storage\Entity\Entity;
+use Bolt\Storage\Query\Query;
 use Bolt\Storage\Query\QueryResultset;
+use Bolt\Storage\Repository;
 use Bolt\Translation\Translator as Trans;
-use Silex\Application;
 use Silex\ControllerCollection;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * Csv Export extension for Bolt
@@ -58,22 +55,17 @@ class Extension extends SimpleExtension
         $collection->get('/export/{contenttype}', [$this, 'doExport']);
     }
 
-    public function doExport(Request $request)
+    /**
+     * @param string         $ct
+     * @param QueryResultset $records
+     *
+     * @return array
+     */
+    private function fetchingRecords($ct, QueryResultset $records)
     {
-        $app    = $this->getContainer();
-        $config = $this->getConfig();
-        $ct     = $request->get('contenttype');
-
-        // We shouldn't be able to get here with an invalid CT but if we do, just use an empty array
-        if (!$this->canExport($ct)) {
-            return new CsvResponse([]);
-        }
-
-        /** @var QueryResultset $allRecords */
-        $allRecords = $app['query']->getContent($ct);
-
+        $config     = $this->getConfig();
         $outputData = [];
-        foreach ($allRecords as $record) {
+        foreach ($records as $record) {
             $compiled = [];
             $record   = $this->processRecord($ct, $record);
             foreach ($record as $fieldName => $field) {
@@ -114,20 +106,85 @@ class Extension extends SimpleExtension
             $outputData[] = $compiled;
         }
 
+        $csvData = [];
         if (count($outputData)) {
-            $headers = array_keys($outputData[0]);
+            $headers   = array_keys($outputData[0]);
+            $csvData[] = $headers;
         }
 
-        $csvData   = [];
-        $csvData[] = $headers;
         foreach ($outputData as $csvRow) {
             $csvData[] = array_values($csvRow);
         }
 
-        $filename  = isset($config['file_names'][$ct]) ? $config['file_names'][$ct] : $ct;
-        $separator = isset($config['separator']) ? $config['separator'] : ',';
+        return $csvData;
+    }
+
+    /**
+     * @param string    $ct
+     * @param CronEvent $event
+     * @param null      $dateStart
+     *
+     * @return CsvResponse
+     */
+    public function doCronExport($ct, CronEvent $event, $dateStart = null)
+    {
+        /** @var Query $query */
+        $query  = $this->getContainer()['query'];
+        $params = [];
+
+        // We shouldn't be able to get here with an invalid CT but if we do, just use an empty array
+        if (!$this->canExport($ct)) {
+            return new CsvResponse([]);
+        }
+
+        if ($dateStart !== null) {
+            $params['datecreated'] = $dateStart;
+        }
+
+        /** @var QueryResultset $records */
+        $records = $query->getContent($ct, $params);
+        $csvData = $this->fetchingRecords($ct, $records);
+
+        $event->output->writeln('Found ' . $records->count() . ' records to export');
+
+        $filename  = $this->getFileName($ct);
+        $separator = $this->getSeparator();
 
         return new CsvResponse($filename, $csvData, $separator);
+    }
+
+    /**
+     * @param Request $request
+     *
+     * @return CsvResponse
+     */
+    public function doExport(Request $request)
+    {
+        $ct = $request->get('contenttype');
+
+        return $this->doCronExport($ct);
+    }
+
+    /**
+     * @return string
+     */
+    private function getSeparator()
+    {
+        $config = $this->getConfig();
+
+        return isset($config['separator']) ? $config['separator'] : ',';
+    }
+
+    /**
+     * @param string $ct
+     *
+     * @return mixed
+     */
+    private function getFileName($ct)
+    {
+        $config = $this->getConfig();
+
+        return isset($config['file_names'][$ct]) ? $config['file_names'][$ct] : $ct;
     }
 
     /**
@@ -153,7 +210,8 @@ class Extension extends SimpleExtension
 
     protected function processRecord($contentType, $record)
     {
-        $app      = $this->getContainer();
+        $app = $this->getContainer();
+        /** @var Repository $repo */
         $repo     = $app['storage']->getRepository($contentType);
         $metadata = $repo->getClassMetadata();
         $values   = [];
