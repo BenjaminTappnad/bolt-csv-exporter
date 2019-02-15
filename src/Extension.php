@@ -128,29 +128,51 @@ class Extension extends SimpleExtension
      */
     public function doCronExport($ct, CronEvent $event, $dateStart = null)
     {
-        /** @var Query $query */
-        $query  = $this->getContainer()['query'];
-        $params = [];
-
         // We shouldn't be able to get here with an invalid CT but if we do, just use an empty array
         if (!$this->canExport($ct)) {
             return new CsvResponse([]);
         }
 
+        $params = [];
         if ($dateStart !== null) {
             $params['datecreated'] = $dateStart;
         }
-
-        /** @var QueryResultset $records */
-        $records = $query->getContent($ct, $params);
-        $csvData = $this->fetchingRecords($ct, $records);
+        $records = $this->getRecords($ct, $params);
 
         $event->output->writeln('Found ' . $records->count() . ' records to export');
 
-        $filename  = $this->getFileName($ct);
+        return $this->export($ct, $records);
+    }
+
+    /**
+     * @param string                                      $contentType
+     * @param \Bolt\Storage\Entity\Content|QueryResultset $records
+     *
+     * @return CsvResponse
+     */
+    private function export($contentType, $records)
+    {
+        $csvData = $this->fetchingRecords($contentType, $records);
+
+        $filename  = $this->getFileName($contentType);
         $separator = $this->getSeparator();
 
         return new CsvResponse($filename, $csvData, $separator);
+    }
+
+    /**
+     * @param string $ct
+     * @param array  $params
+     *
+     * @return \Bolt\Storage\Entity\Content|QueryResultset|null
+     */
+    private function getRecords($ct, $params = [])
+    {
+        /** @var Query $query */
+        $query = $this->getContainer()['query'];
+
+        /** @var QueryResultset $records */
+        return $query->getContent($ct, $params);
     }
 
     /**
@@ -162,7 +184,15 @@ class Extension extends SimpleExtension
     {
         $ct = $request->get('contenttype');
 
-        return $this->doCronExport($ct);
+        // We shouldn't be able to get here with an invalid CT but if we do, just use an empty array
+        if (!$this->canExport($ct)) {
+            return new CsvResponse([]);
+        }
+
+        /** @var QueryResultset $records */
+        $records = $this->getRecords($ct);
+
+        return $this->export($ct, $records);
     }
 
     /**
