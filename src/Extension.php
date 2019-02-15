@@ -40,6 +40,7 @@ class Extension extends SimpleExtension
             $parent->add(
                 (new MenuEntry('export ' . $key, $prefix . '/export/' . $key))
                     ->setLabel('Export ' . $export['name'])
+                    ->setPermission($permission)
                     ->setIcon('fa:file')
             );
         }
